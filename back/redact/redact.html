@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title></title>
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+      integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prettify/r298/prettify.min.css" />
+  </head>
+  <body>
+    <style>
+      canvas,
+      .canvas-container {
+        margin-bottom: 25px;
+      }
+
+      .canvas-container {
+        margin-left: auto;
+        margin-right: auto;
+      }
+      body {
+        background-color: rgb(82, 86, 89);
+      }
+
+      canvas,
+      .canvas-container {
+        -webkit-box-shadow: 10px 10px 5px 0px rgba(0, 0, 0, 0.75);
+        -moz-box-shadow: 10px 10px 5px 0px rgba(0, 0, 0, 0.75);
+        box-shadow: 10px 10px 5px 0px rgba(0, 0, 0, 0.75);
+      }
+
+      .toolbar {
+        width: 100%;
+        background-color: rgb(50, 54, 57);
+        height: 50px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 10;
+      }
+
+      #pdf-container {
+        margin-top: 60px;
+        padding-left: 10px;
+        text-align: center;
+      }
+
+      button:focus {
+        outline: 0;
+      }
+
+      .toolbar .tool {
+        display: inline-block;
+        color: #fff;
+        height: 100%;
+        padding-top: 10px;
+        padding-left: 10px;
+        margin-right: 5px;
+      }
+
+      .toolbar .tool label,
+      .toolbar .tool select,
+      .toolbar .tool input {
+        display: inline-block;
+        width: auto;
+        height: auto !important;
+        padding: 0;
+      }
+
+      .toolbar .tool input {
+        width: 50px;
+      }
+
+      .toolbar .tool .color-tool {
+        height: 25px;
+        width: 25px;
+        border-radius: 25px;
+        border: 0;
+        cursor: pointer;
+        display: inline-block;
+      }
+
+      .toolbar .tool .color-tool.active {
+        -webkit-box-shadow: 3px 4px 5px 0px rgba(0, 0, 0, 0.75);
+        -moz-box-shadow: 3px 4px 5px 0px rgba(0, 0, 0, 0.75);
+        box-shadow: 3px 4px 5px 0px rgba(0, 0, 0, 0.75);
+      }
+
+      .toolbar .tool:nth-last-child(1) {
+        float: right;
+      }
+
+      .toolbar .tool .tool-button {
+        background-color: rgb(50, 54, 57);
+        border: 1px solid rgb(50, 54, 57);
+        color: #fff;
+        cursor: pointer;
+      }
+
+      .toolbar .tool .tool-button:hover,
+      .toolbar .tool .tool-button.active {
+        background-color: rgb(82, 86, 89);
+        border-color: rgb(82, 86, 89);
+      }
+    </style>
+    <div class="toolbar">
+      <div class="tool">
+        <span>PDFJS + FabricJS + jsPDF</span>
+      </div>
+      <div class="tool">
+        <label for="">Brush size</label>
+        <input type="number" class="form-control text-right" value="1" id="brush-size" max="50" />
+      </div>
+      <div class="tool">
+        <label for="">Font size</label>
+        <select id="font-size" class="form-control">
+          <option value="10">10</option>
+          <option value="12">12</option>
+          <option value="16" selected>16</option>
+          <option value="18">18</option>
+          <option value="24">24</option>
+          <option value="32">32</option>
+          <option value="48">48</option>
+          <option value="64">64</option>
+          <option value="72">72</option>
+          <option value="108">108</option>
+        </select>
+      </div>
+      <div class="tool">
+        <button class="color-tool active" style="background-color: #212121"></button>
+        <button class="color-tool" style="background-color: red"></button>
+        <button class="color-tool" style="background-color: blue"></button>
+        <button class="color-tool" style="background-color: green"></button>
+        <button class="color-tool" style="background-color: yellow"></button>
+      </div>
+      <div class="tool">
+        <button class="tool-button active">
+          <i class="fa fa-hand-paper-o" title="Free Hand" onclick="enableSelector(event)"></i>
+        </button>
+      </div>
+      <div class="tool">
+        <button class="tool-button"><i class="fa fa-pencil" title="Pencil" onclick="enablePencil(event)"></i></button>
+      </div>
+      <div class="tool">
+        <button class="tool-button"><i class="fa fa-font" title="Add Text" onclick="enableAddText(event)"></i></button>
+      </div>
+      <div class="tool">
+        <button class="tool-button">
+          <i class="fa fa-long-arrow-right" title="Add Arrow" onclick="enableAddArrow(event)"></i>
+        </button>
+      </div>
+      <div class="tool">
+        <button class="tool-button">
+          <i class="fa fa-square-o" title="Add rectangle" onclick="enableRectangle(event)"></i>
+        </button>
+      </div>
+      <div class="tool">
+        <button class="tool-button">
+          <i class="fa fa-picture-o" title="Add an Image" onclick="addImage(event)"></i>
+        </button>
+      </div>
+      <div class="tool">
+        <button class="btn btn-danger btn-sm" onclick="deleteSelectedObject(event)"><i class="fa fa-trash"></i></button>
+      </div>
+      <div class="tool">
+        <button class="btn btn-danger btn-sm" onclick="clearPage()">Clear Page</button>
+      </div>
+      <div class="tool">
+        <button class="btn btn-info btn-sm" onclick="showPdfData()">{}</button>
+      </div>
+      <div class="tool">
+        <button class="btn btn-light btn-sm" onclick="savePDF()"><i class="fa fa-save"></i> Save</button>
+      </div>
+    </div>
+    <div id="pdf-container"></div>
+
+    <div
+      class="modal fade"
+      id="dataModal"
+      tabindex="-1"
+      role="dialog"
+      aria-labelledby="dataModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="dataModalLabel">PDF annotation data</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <pre class="prettyprint lang-json linenums"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+      integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+      integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.min.js"></script>
+    <script>
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.worker.min.js';
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.3.0/fabric.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.2.0/jspdf.umd.min.js"></script>
+    <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prettify/r298/prettify.min.js"></script>
+    <script src="./arrow.fabric.js"></script>
+    <script src="./sample_output.js"></script>
+    <script src="./pdfannotate.min.js"></script>
+    <script src="./script.js"></script>
+    <script>
+      /**
+       * From: https://blog.thirdrocktechkno.com/how-to-draw-an-arrow-using-html-5-canvas-and-fabricjs-9500c3f50ecb
+       */
+
+      // Extended fabric line class
+      fabric.LineArrow = fabric.util.createClass(fabric.Line, {
+        type: 'lineArrow',
+
+        initialize: function (element, options) {
+          options || (options = {});
+          this.callSuper('initialize', element, options);
+        },
+
+        toObject: function () {
+          return fabric.util.object.extend(this.callSuper('toObject'));
+        },
+
+        _render: function (ctx) {
+          this.callSuper('_render', ctx);
+
+          // do not render if width/height are zeros or object is not visible
+          if (this.width === 0 || this.height === 0 || !this.visible) return;
+
+          ctx.save();
+
+          var xDiff = this.x2 - this.x1;
+          var yDiff = this.y2 - this.y1;
+          var angle = Math.atan2(yDiff, xDiff);
+          ctx.translate((this.x2 - this.x1) / 2, (this.y2 - this.y1) / 2);
+          ctx.rotate(angle);
+          ctx.beginPath();
+          //move 10px in front of line to start the arrow so it does not have the square line end showing in front (0,0)
+          ctx.moveTo(10, 0);
+          ctx.lineTo(-20, 15);
+          ctx.lineTo(-20, -15);
+          ctx.closePath();
+          ctx.fillStyle = this.stroke;
+          ctx.fill();
+
+          ctx.restore();
+        },
+      });
+
+      fabric.LineArrow.fromObject = function (object, callback) {
+        callback && callback(new fabric.LineArrow([object.x1, object.y1, object.x2, object.y2], object));
+      };
+
+      fabric.LineArrow.async = true;
+
+      var Arrow = (function () {
+        function Arrow(canvas, color, callback) {
+          this.canvas = canvas;
+          this.className = 'Arrow';
+          this.isDrawing = false;
+          this.color = color;
+          this.callback = callback;
+          this.bindEvents();
+        }
+
+        Arrow.prototype.bindEvents = function () {
+          var inst = this;
+          inst.canvas.on('mouse:down', function (o) {
+            inst.onMouseDown(o);
+          });
+          inst.canvas.on('mouse:move', function (o) {
+            inst.onMouseMove(o);
+          });
+          inst.canvas.on('mouse:up', function (o) {
+            inst.onMouseUp(o);
+          });
+          inst.canvas.on('object:moving', function (o) {
+            inst.disable();
+          });
+        };
+
+        Arrow.prototype.unBindEventes = function () {
+          var inst = this;
+          inst.canvas.off('mouse:down');
+          inst.canvas.off('mouse:up');
+          inst.canvas.off('mouse:move');
+          inst.canvas.off('object:moving');
+        };
+
+        Arrow.prototype.onMouseUp = function (o) {
+          var inst = this;
+          inst.disable();
+          inst.unBindEventes();
+          if (inst.callback) inst.callback();
+        };
+
+        Arrow.prototype.onMouseMove = function (o) {
+          var inst = this;
+          if (!inst.isEnable()) {
+            return;
+          }
+
+          var pointer = inst.canvas.getPointer(o.e);
+          var activeObj = inst.canvas.getActiveObject();
+          activeObj.set({
+            x2: pointer.x,
+            y2: pointer.y,
+          });
+          activeObj.setCoords();
+          inst.canvas.renderAll();
+        };
+
+        Arrow.prototype.onMouseDown = function (o) {
+          var inst = this;
+          inst.enable();
+          var pointer = inst.canvas.getPointer(o.e);
+
+          var points = [pointer.x, pointer.y, pointer.x, pointer.y];
+          var line = new fabric.LineArrow(points, {
+            strokeWidth: 5,
+            fill: inst.color ? inst.color : 'red',
+            stroke: inst.color ? inst.color : 'red',
+            originX: 'center',
+            originY: 'center',
+            hasBorders: false,
+            hasControls: true,
+            selectable: true,
+          });
+
+          inst.canvas.add(line).setActiveObject(line);
+        };
+
+        Arrow.prototype.isEnable = function () {
+          return this.isDrawing;
+        };
+
+        Arrow.prototype.enable = function () {
+          this.isDrawing = true;
+        };
+
+        Arrow.prototype.disable = function () {
+          this.isDrawing = false;
+        };
+
+        return Arrow;
+      })();
+      var PDFAnnotate = function (t, e, n = {}) {
+        (this.number_of_pages = 0),
+          (this.pages_rendered = 0),
+          (this.active_tool = 1),
+          (this.fabricObjects = []),
+          (this.fabricObjectsData = []),
+          (this.color = '#212121'),
+          (this.borderColor = '#000000'),
+          (this.borderSize = 1),
+          (this.font_size = 16),
+          (this.active_canvas = 0),
+          (this.container_id = t),
+          (this.url = e),
+          (this.pageImageCompression = n.pageImageCompression ? n.pageImageCompression.toUpperCase() : 'NONE'),
+          (this.textBoxText = 'Sample Text'),
+          this.format,
+          this.orientation;
+        var a = this;
+        pdfjsLib.getDocument(this.url).promise.then(
+          function (t) {
+            var e = n.scale ? n.scale : 1.3;
+            a.number_of_pages = t.numPages;
+            for (var o = 1; o <= t.numPages; o++)
+              t.getPage(o).then(function (t) {
+                if (void 0 === a.format || void 0 === a.orientation) {
+                  var n = t.getViewport({ scale: 1 });
+                  (a.format = [n.width, n.height]), (a.orientation = n.width > n.height ? 'landscape' : 'portrait');
+                }
+                var o = t.getViewport({ scale: e }),
+                  i = document.createElement('canvas');
+                document.getElementById(a.container_id).appendChild(i),
+                  (i.className = 'pdf-canvas'),
+                  (i.height = o.height),
+                  (i.width = o.width),
+                  (context = i.getContext('2d'));
+                var r = { canvasContext: context, viewport: o };
+                t.render(r).promise.then(function () {
+                  $('.pdf-canvas').each(function (t, e) {
+                    $(e).attr('id', 'page-' + (t + 1) + '-canvas');
+                  }),
+                    a.pages_rendered++,
+                    a.pages_rendered == a.number_of_pages && a.initFabric();
+                });
+              });
+          },
+          function (t) {}
+        ),
+          (this.initFabric = function () {
+            var t = this;
+            let e = $('#' + t.container_id + ' canvas');
+            e.each(function (a, o) {
+              var i = o.toDataURL('image/png'),
+                r = new fabric.Canvas(o.id, { freeDrawingBrush: { width: 1, color: t.color } });
+              t.fabricObjects.push(r),
+                'function' == typeof n.onPageUpdated &&
+                  r.on('object:added', function () {
+                    var e = Object.assign({}, t.fabricObjectsData[a]);
+                    (t.fabricObjectsData[a] = r.toJSON()), n.onPageUpdated(a + 1, e, t.fabricObjectsData[a]);
+                  }),
+                r.setBackgroundImage(i, r.renderAll.bind(r)),
+                $(r.upperCanvasEl).click(function (e) {
+                  (t.active_canvas = a), t.fabricClickHandler(e, r);
+                }),
+                r.on('after:render', function () {
+                  (t.fabricObjectsData[a] = r.toJSON()), r.off('after:render');
+                }),
+                a === e.length - 1 && 'function' == typeof n.ready && n.ready();
+            });
+          }),
+          (this.fabricClickHandler = function (t, e) {
+            var n,
+              a = this;
+            2 == a.active_tool
+              ? (n = new fabric.IText(a.textBoxText, {
+                  left: t.clientX - e.upperCanvasEl.getBoundingClientRect().left,
+                  top: t.clientY - e.upperCanvasEl.getBoundingClientRect().top,
+                  fill: a.color,
+                  fontSize: a.font_size,
+                  selectable: !0,
+                }))
+              : 4 == a.active_tool &&
+                (n = new fabric.Rect({
+                  left: t.clientX - e.upperCanvasEl.getBoundingClientRect().left,
+                  top: t.clientY - e.upperCanvasEl.getBoundingClientRect().top,
+                  width: 100,
+                  height: 100,
+                  fill: a.color,
+                  stroke: a.borderColor,
+                  strokeSize: a.borderSize,
+                })),
+              n && e.add(n);
+          });
+      };
+      (PDFAnnotate.prototype.enableSelector = function () {
+        var t = this;
+        (t.active_tool = 0),
+          t.fabricObjects.length > 0 &&
+            $.each(t.fabricObjects, function (t, e) {
+              e.isDrawingMode = !1;
+            });
+      }),
+        (PDFAnnotate.prototype.enablePencil = function () {
+          var t = this;
+          (t.active_tool = 1),
+            t.fabricObjects.length > 0 &&
+              $.each(t.fabricObjects, function (t, e) {
+                e.isDrawingMode = !0;
+              });
+        }),
+        (PDFAnnotate.prototype.enableAddText = function (t) {
+          var e = this;
+          (e.active_tool = 2),
+            'string' == typeof t && (e.textBoxText = t),
+            e.fabricObjects.length > 0 &&
+              $.each(e.fabricObjects, function (t, e) {
+                e.isDrawingMode = !1;
+              });
+        }),
+        (PDFAnnotate.prototype.enableRectangle = function () {
+          var t = this;
+          t.fabricObjects[t.active_canvas];
+          (t.active_tool = 4),
+            t.fabricObjects.length > 0 &&
+              $.each(t.fabricObjects, function (t, e) {
+                e.isDrawingMode = !1;
+              });
+        }),
+        (PDFAnnotate.prototype.enableAddArrow = function (t = null) {
+          var e = this;
+          (e.active_tool = 3),
+            e.fabricObjects.length > 0 &&
+              $.each(e.fabricObjects, function (n, a) {
+                (a.isDrawingMode = !1),
+                  new Arrow(a, e.color, function () {
+                    (e.active_tool = 0), 'function' == typeof t && t();
+                  });
+              });
+        }),
+        (PDFAnnotate.prototype.addImageToCanvas = function () {
+          var t = this.fabricObjects[this.active_canvas];
+          if (t) {
+            var e = document.createElement('input');
+            (e.type = 'file'),
+              (e.accept = '.jpg,.jpeg,.png,.PNG,.JPG,.JPEG'),
+              (e.onchange = function () {
+                var n = new FileReader();
+                n.addEventListener(
+                  'load',
+                  function () {
+                    e.remove();
+                    var n = new Image();
+                    (n.onload = function () {
+                      t.add(new fabric.Image(n));
+                    }),
+                      (n.src = this.result);
+                  },
+                  !1
+                ),
+                  n.readAsDataURL(e.files[0]);
+              }),
+              document.getElementsByTagName('body')[0].appendChild(e),
+              e.click();
+          }
+        }),
+        (PDFAnnotate.prototype.deleteSelectedObject = function () {
+          var t = this,
+            e = t.fabricObjects[t.active_canvas].getActiveObject();
+          e && confirm('Are you sure ?') && t.fabricObjects[t.active_canvas].remove(e);
+        }),
+        (PDFAnnotate.prototype.savePdf = function (t) {
+          var e = this,
+            n = e.format || 'a4',
+            a = e.orientation || 'portrait';
+          if (e.fabricObjects.length) {
+            var o = new jspdf.jsPDF({ format: n, orientation: a });
+            void 0 === t && (t = `${new Date().getTime()}.pdf`),
+              e.fabricObjects.forEach(function (i, r) {
+                0 != r && (o.addPage(n, a), o.setPage(r + 1)),
+                  o.addImage(
+                    i.toDataURL({ format: 'png' }),
+                    'NONE' == e.pageImageCompression ? 'PNG' : 'JPEG',
+                    0,
+                    0,
+                    o.internal.pageSize.getWidth(),
+                    o.internal.pageSize.getHeight(),
+                    `page-${r + 1}`,
+                    ['FAST', 'MEDIUM', 'SLOW'].indexOf(e.pageImageCompression) >= 0 ? e.pageImageCompression : void 0
+                  ),
+                  r === e.fabricObjects.length - 1 && o.save(t);
+              });
+          }
+        }),
+        (PDFAnnotate.prototype.setBrushSize = function (t) {
+          $.each(this.fabricObjects, function (e, n) {
+            n.freeDrawingBrush.width = parseInt(t, 10) || 1;
+          });
+        }),
+        (PDFAnnotate.prototype.setColor = function (t) {
+          (this.color = t),
+            $.each(this.fabricObjects, function (e, n) {
+              n.freeDrawingBrush.color = t;
+            });
+        }),
+        (PDFAnnotate.prototype.setBorderColor = function (t) {
+          this.borderColor = t;
+        }),
+        (PDFAnnotate.prototype.setFontSize = function (t) {
+          this.font_size = t;
+        }),
+        (PDFAnnotate.prototype.setBorderSize = function (t) {
+          this.borderSize = t;
+        }),
+        (PDFAnnotate.prototype.clearActivePage = function () {
+          var t = this.fabricObjects[this.active_canvas],
+            e = t.backgroundImage;
+          confirm('Are you sure?') && (t.clear(), t.setBackgroundImage(e, t.renderAll.bind(t)));
+        }),
+        (PDFAnnotate.prototype.serializePdf = function (t) {
+          var e = this,
+            n = [];
+          e.fabricObjects.forEach(function (a) {
+            a.clone(function (a) {
+              if (
+                (a.setBackgroundImage(null), a.setBackgroundColor(''), n.push(a), n.length === e.fabricObjects.length)
+              ) {
+                var o = { page_setup: { format: e.format, orientation: e.orientation }, pages: n };
+                t(JSON.stringify(o));
+              }
+            });
+          });
+        }),
+        (PDFAnnotate.prototype.loadFromJSON = function (t) {
+          var e = this,
+            { page_setup: n, pages: a } = t;
+          void 0 === a && (a = t),
+            'object' == typeof n &&
+              'string' == typeof n.format &&
+              'string' == typeof n.orientation &&
+              ((e.format = n.format), (e.orientation = n.orientation)),
+            $.each(e.fabricObjects, function (t, n) {
+              a.length > t &&
+                n.loadFromJSON(a[t], function () {
+                  e.fabricObjectsData[t] = n.toJSON();
+                });
+            });
+        }),
+        (PDFAnnotate.prototype.setDefaultTextForTextBox = function (t) {
+          'string' == typeof t && (this.textBoxText = t);
+        });
+      var pdf = new PDFAnnotate('pdf-container', 'sample.pdf', {
+        onPageUpdated(page, oldData, newData) {
+          console.log(page, oldData, newData);
+        },
+        ready() {
+          console.log('Plugin initialized successfully');
+          pdf.loadFromJSON(sampleOutput);
+        },
+        scale: 1.5,
+        pageImageCompression: 'MEDIUM', // FAST, MEDIUM, SLOW(Helps to control the new PDF file size)
+      });
+
+      function changeActiveTool(event) {
+        var element = $(event.target).hasClass('tool-button')
+          ? $(event.target)
+          : $(event.target).parents('.tool-button').first();
+        $('.tool-button.active').removeClass('active');
+        $(element).addClass('active');
+      }
+
+      function enableSelector(event) {
+        event.preventDefault();
+        changeActiveTool(event);
+        pdf.enableSelector();
+      }
+
+      function enablePencil(event) {
+        event.preventDefault();
+        changeActiveTool(event);
+        pdf.enablePencil();
+      }
+
+      function enableAddText(event) {
+        event.preventDefault();
+        changeActiveTool(event);
+        pdf.enableAddText();
+      }
+
+      function enableAddArrow(event) {
+        event.preventDefault();
+        changeActiveTool(event);
+        pdf.enableAddArrow(function () {
+          $('.tool-button').first().find('i').click();
+        });
+      }
+
+      function addImage(event) {
+        event.preventDefault();
+        pdf.addImageToCanvas();
+      }
+
+      function enableRectangle(event) {
+        event.preventDefault();
+        changeActiveTool(event);
+        pdf.setColor('rgba(255, 0, 0, 0.3)');
+        pdf.setBorderColor('blue');
+        pdf.enableRectangle();
+      }
+
+      function deleteSelectedObject(event) {
+        event.preventDefault();
+        pdf.deleteSelectedObject();
+      }
+
+      function savePDF() {
+        // pdf.savePdf();
+        pdf.savePdf('output.pdf'); // save with given file name
+      }
+
+      function clearPage() {
+        pdf.clearActivePage();
+      }
+
+      function showPdfData() {
+        pdf.serializePdf(function (string) {
+          $('#dataModal .modal-body pre')
+            .first()
+            .text(JSON.stringify(JSON.parse(string), null, 4));
+          PR.prettyPrint();
+          $('#dataModal').modal('show');
+        });
+      }
+
+      $(function () {
+        $('.color-tool').click(function () {
+          $('.color-tool.active').removeClass('active');
+          $(this).addClass('active');
+          color = $(this).get(0).style.backgroundColor;
+          pdf.setColor(color);
+        });
+
+        $('#brush-size').change(function () {
+          var width = $(this).val();
+          pdf.setBrushSize(width);
+        });
+
+        $('#font-size').change(function () {
+          var font_size = $(this).val();
+          pdf.setFontSize(font_size);
+        });
+      });
+    </script>
+  </body>
+</html>
